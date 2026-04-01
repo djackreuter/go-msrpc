@@ -122,14 +122,19 @@ func (o *Object) Values() Values {
 
 	var values = make(Values)
 
-	for _, prop := range o.Instance.Properties {
+	for i, prop := range o.Instance.Properties {
+		name := prop.Name
+		if name == "" && i < len(o.Instance.CurrentClass.Properties) {
+			name = o.Instance.CurrentClass.Properties[i].Name
+		}
+
 		switch value := prop.Value.Value.(type) {
 		case *Object:
 			values[prop.Name] = value.Values()
 		case []*Object:
 			vls := make([]any, len(value))
-			for i := range value {
-				vls[i] = value[i].Values()
+			for j := range value {
+				vls[j] = value[j].Values()
 			}
 			values[prop.Name] = vls
 		default:
@@ -684,10 +689,10 @@ func (o *Class) Decode(r *Codec) error {
 func (o *Class) Encode(r *Codec) error {
 	return r.EncodeWithLength32(func(r *Codec) error {
 		r.Begin("class")
-		// if o.Raw != nil {
-		//	r.WriteData(o.Raw)
-		//	return r.Done()
-		// }
+		if o.Raw != nil {
+			r.WriteData(o.Raw)
+			return r.Done()
+		}
 		r.refs.Push()
 		defer r.refs.Pop()
 		r.WriteData(uint8(0))
@@ -820,13 +825,14 @@ type Qualifier struct {
 }
 
 func QualifierSetSize(qs []*Qualifier) int {
-	/* actual size of the qualifiers.
+	//actual size of the qualifiers.
 	qSz := 4 // encoded-length
 	for i := range qs {
 		qSz += 4 + 1 + 4 + qs[i].Value.EncodeValueSize()
 	}
-	*/
-	return 4 + 20*len(qs)
+	return qSz
+	//*/
+	//return 4 + 20*len(qs)
 }
 
 func (o *Qualifier) String() string {
